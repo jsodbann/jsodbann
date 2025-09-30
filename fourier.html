@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fourier Transform Visualization</title>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async
+    src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js">
+    </script>
+
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background-color: #121212;
+            color: #e0e0e0;
+            margin: 0;
+            min-height: 100vh;
+            padding-top: 20px;
+        }
+        #controls {
+            margin: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 15px;
+        }
+        #animation-controls {
+            display: flex;
+            gap: 10px;
+        }
+        label {
+            font-size: 1.1em;
+        }
+        input[type="range"] {
+            width: 300px;
+        }
+        button {
+            padding: 10px 20px;
+            font-size: 1em;
+            cursor: pointer;
+            border: 1px solid #424242;
+            border-radius: 5px;
+            background-color: #212121;
+            color: white;
+            transition: background-color 0.3s;
+            min-width: 90px;
+        }
+        button:hover {
+            background-color: #1565c0;
+        }
+        #canvas-container {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            align-items: center;
+            gap: 20px;
+            width: 100%;
+            margin-top: 10px;
+            padding-bottom: 60px;
+        }
+        canvas {
+            background-color: #212121;
+            border: 1px solid #424242;
+            border-radius: 8px;
+        }
+        #explanation {
+            width: 100%;                  
+            background-color: #212121;     
+            border-top: 1px solid #424242;
+            border-bottom: 1px solid #424242;
+            margin: 0;
+            padding: 50px 50px;           
+            box-sizing: border-box;
+        }
+
+        .text-block {
+            max-width: 1000px;            
+            margin: 0 auto 20px auto;     
+            text-align: center;           
+        }
+        .text-block_1 {
+            max-width: 1000px;            
+            margin: 0 auto 20px auto;     
+            text-align: center;
+            font-size:larger;           
+        }
+
+
+    </style>
+</head>
+<body>
+    <h1>Interactive Fourier Transform</h1>
+    <p>Draw on the left. The epicycles appear in the middle. The right canvas shows the final path.</p>
+
+    <div id="controls">
+        <div>
+            <label for="orderSlider">Number of Epicycles: </label>
+            <input type="number" id="orderSlider" min="1" max="1000" value="10">
+        </div>
+        <div id="animation-controls">
+            <button id="pauseButton">Play</button>
+            <button id="replayButton">Replay</button>
+            <button id="clearButton">Clear</button>
+        </div>
+    </div>
+
+    <div id="canvas-container">
+        <canvas id="drawingCanvas"></canvas>
+        <div style="position: relative; display: inline-block;">
+            <canvas id="epicycleCanvas"></canvas>
+        </div>
+        <canvas id="resultCanvas"></canvas>
+    </div>
+    <div id="explanation">
+        <h1 class="text-block"> The Fourier Transform </h1>
+        <p1 class="text-block"> The Fourier Transform is a powerful mathematical tool that decomposes a complex signal or function into simpler components, specifically sine and cosine waves. This decomposition allows us to analyze the signal in terms of its constituent frequencies. Conceptually, the Fourier Transform answers the question: “Which frequencies are present in this signal, and in what proportions?” By representing a signal as a sum of oscillatory components, we gain insight into its underlying structure and can reconstruct it precisely from these components. </p1>
+        <hb></hb>
+        <p1 class="text-block" style="text-align: left;"><p>For a continuous function \( f(t) \) defined over a period \( T \), the Fourier series representation expresses the function as a sum of complex exponentials:</p>
+        <p>\[f(t) = \sum_{k=-\infty}^{\infty} c_k \, e^{i 2 \pi k t / T}\]</p></p1>
+        <p> Here, \( k \) denotes the frequency index, and \( c_k \) is a complex coefficient encoding both the amplitude and phase of each frequency component. The use of complex exponentials is justified by Euler’s formula, \[e^{i \theta} = \cos \theta + i \sin \theta,\] which allows sines and cosines to be expressed compactly. The orthogonality property of complex exponentials ensures that each coefficient \( c_k \) can be calculated independently of the others. By multiplying both sides of the series by \( e^{-i 2 \pi k t / T} \) and integrating over one period, we isolate the coefficient:</p> <p>\[c_k = \frac{1}{T} \int_0^T f(t) \, e^{-i 2 \pi k t / T} \, dt\]</p><p>This coefficient captures the amplitude (magnitude) and phase (angle) of the \( k \)-th frequency component, providing a complete description of its contribution to the original function.</p>
+        <h2>Discrete Fourier Transform for Sampled Data</h2><p>In practical applications, signals are often sampled at discrete points rather than continuous functions. In the context of the interactive drawing program, the user’s path is represented as a finite sequence of points \( x[n] \) and \( y[n] \). To apply Fourier analysis, these points are combined into complex numbers:</p><p>\[ z[n] = x[n] + i y[n] \]</p><p>The continuous integral is then approximated as a discrete sum, leading to the Discrete Fourier Transform (DFT):</p><p>\[ c_k \approx \frac{1}{N} \sum_{n=0}^{N-1} z[n] \, e^{-i 2 \pi k n / N} \]</p><p>Each coefficient \( c_k \) represents a vector in the complex plane, where the magnitude indicates the radius of the corresponding epicycle and the phase determines its initial angle. Frequencies \( k \) correspond to the number of complete rotations per period, and the orthogonality of the discrete exponentials ensures that each frequency is extracted independently. In essence, the DFT transforms the spatial pattern of the user’s drawing into a set of rotating vectors, each capturing a particular frequency component.</p>
+        <h2>Reconstruction and Epicycle Animation</h2><p>Once the Fourier coefficients are computed, the original path can be reconstructed by summing the contributions of all epicycles. Each coefficient generates a rotating vector, or epicycle, that rotates at a speed proportional to its frequency. The tip of the vector traces a portion of the original path, and summing all vectors reproduces the user’s drawing with remarkable fidelity. Mathematically, this reconstruction is expressed as:</p><p>\[ z(t) \approx \sum_k |c_k| e^{i \left( \tfrac{2 \pi k t}{N} + \text{phase} \right)} \]</p><p>In the implemented code, this is realized by iterating over the sorted Fourier coefficients, computing the rotation for each epicycle at a given time step, and summing their contributions to determine the position of the tip. The resulting animation visually demonstrates how complex paths can be built from simple circular motions, with the largest amplitude coefficients contributing most prominently to the shape.</p>
+    </div>
+<script>
+
+class Complex {
+    constructor(a, b) { this.re = a; this.im = b; }
+    add(c) { return new Complex(this.re + c.re, this.im + c.im); }
+    multiply(c) {
+        const re = this.re * c.re - this.im * c.im;
+        const im = this.re * c.im + this.im * c.re;
+        return new Complex(re, im);
+    }
+}
+
+const drawingCanvas = document.getElementById('drawingCanvas');
+const epicycleCanvas = document.getElementById('epicycleCanvas');
+const resultCanvas = document.getElementById('resultCanvas');
+const dCtx = drawingCanvas.getContext('2d');
+const eCtx = epicycleCanvas.getContext('2d');
+const rCtx = resultCanvas.getContext('2d');
+
+const orderSlider = document.getElementById('orderSlider');
+const orderValue = document.getElementById('orderValue');
+const clearButton = document.getElementById('clearButton');
+const pauseButton = document.getElementById('pauseButton');
+const replayButton = document.getElementById('replayButton');
+
+let canvasSize;
+let userPath = [];
+let fourierCoefficients = [];
+let time = 0;
+let path = [];
+let isDrawing = false;
+let isPaused = true;
+
+pauseButton.addEventListener('click', () => {
+    if (fourierCoefficients.length === 0) return;
+    isPaused = !isPaused;
+    pauseButton.textContent = isPaused ? 'Play' : 'Pause';
+    if (!isPaused && time >= 2 * Math.PI) {
+        replayAnimation();
+    }
+});
+
+replayButton.addEventListener('click', () => {
+    if (fourierCoefficients.length > 0) replayAnimation();
+});
+
+function replayAnimation() {
+    time = 0;
+    path = [];
+    rCtx.clearRect(0, 0, resultCanvas.width, resultCanvas.height);
+    isPaused = false;
+    pauseButton.textContent = 'Pause';
+}
+
+orderSlider.addEventListener('input', () => {
+    orderValue.textContent = orderSlider.value;
+});
+
+clearButton.addEventListener('click', () => {
+    userPath = [];
+    fourierCoefficients = [];
+    path = [];
+    isPaused = true;
+    pauseButton.textContent = 'Play';
+    dCtx.clearRect(0, 0, drawingCanvas.width, drawingCanvas.height);
+    eCtx.clearRect(0, 0, epicycleCanvas.width, epicycleCanvas.height);
+    rCtx.clearRect(0, 0, resultCanvas.width, resultCanvas.height);
+});
+
+function resizeCanvases() {
+    if (document.fullscreenElement) return;
+    const availableWidth = window.innerWidth - 40;
+    canvasSize = Math.min(availableWidth / 3.2, window.innerHeight * 0.5);
+    drawingCanvas.width = drawingCanvas.height = canvasSize;
+    epicycleCanvas.width = epicycleCanvas.height = canvasSize;
+    resultCanvas.width = resultCanvas.height = canvasSize;
+    clearButton.click();
+}
+
+window.addEventListener('resize', resizeCanvases);
+resizeCanvases();
+
+function getMousePos(canvas, evt) {
+    const rect = canvas.getBoundingClientRect();
+    return { x: evt.clientX - rect.left, y: evt.clientY - rect.top };
+}
+
+drawingCanvas.addEventListener('mousedown', (e) => {
+    isDrawing = true;
+    userPath = [];
+    fourierCoefficients = [];
+    rCtx.clearRect(0, 0, canvasSize, canvasSize);
+    isPaused = false;
+    pauseButton.textContent = 'Pause';
+    const pos = getMousePos(drawingCanvas, e);
+    userPath.push({ x: pos.x - canvasSize / 2, y: pos.y - canvasSize / 2 });
+});
+
+drawingCanvas.addEventListener('mousemove', (e) => {
+    if (!isDrawing) return;
+    const pos = getMousePos(drawingCanvas, e);
+    userPath.push({ x: pos.x - canvasSize / 2, y: pos.y - canvasSize / 2 });
+    dCtx.clearRect(0, 0, canvasSize, canvasSize);
+    dCtx.strokeStyle = '#e0e0e0';
+    dCtx.lineWidth = 2;
+    dCtx.beginPath();
+    if (userPath.length > 1) {
+        dCtx.moveTo(userPath[0].x + canvasSize / 2, userPath[0].y + canvasSize / 2);
+        for (let i = 1; i < userPath.length; i++) {
+            dCtx.lineTo(userPath[i].x + canvasSize / 2, userPath[i].y + canvasSize / 2);
+        }
+        dCtx.stroke();
+    }
+});
+
+const endDrawing = () => {
+    if (isDrawing) {
+        isDrawing = false;
+        calculateFourier();
+    }
+};
+drawingCanvas.addEventListener('mouseup', endDrawing);
+drawingCanvas.addEventListener('mouseleave', endDrawing);
+
+function dft(x) {
+    const X = [];
+    const N = x.length;
+    for (let k = 0; k < N; k++) {
+        let sum = new Complex(0, 0);
+        for (let n = 0; n < N; n++) {
+            const phi = (2 * Math.PI * k * n) / N;
+            const c = new Complex(Math.cos(phi), -Math.sin(phi));
+            sum = sum.add(x[n].multiply(c));
+        }
+        sum.re /= N;
+        sum.im /= N;
+        X[k] = {
+            freq: k > N / 2 ? k - N : k,
+            amp: Math.sqrt(sum.re * sum.re + sum.im * sum.im),
+            phase: Math.atan2(sum.im, sum.re)
+        };
+    }
+    return X;
+}
+
+function calculateFourier() {
+    if (userPath.length < 2) {
+        isPaused = true;
+        return;
+    }
+    const complexPath = userPath.map(p => new Complex(p.x, p.y));
+    fourierCoefficients = dft(complexPath);
+    fourierCoefficients.sort((a, b) => b.amp - a.amp);
+    replayAnimation();
+}
+
+function drawGraph(ctx, width, height) {
+    ctx.strokeStyle = "rgba(255, 255, 255, 0.1)";
+    ctx.lineWidth = 1;
+    for (let x = width / 2; x < width; x += 50) {
+        ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, height); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(width - x, 0); ctx.lineTo(width - x, height); ctx.stroke();
+    }
+    for (let y = height / 2; y < height; y += 50) {
+        ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(width, y); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(0, height - y); ctx.lineTo(width, height - y); ctx.stroke();
+    }
+    ctx.strokeStyle = "rgba(255, 255, 255, 0.3)";
+    ctx.beginPath(); ctx.moveTo(width / 2, 0); ctx.lineTo(width / 2, height); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(0, height / 2); ctx.lineTo(width, height / 2); ctx.stroke();
+}
+
+function animate() {
+    requestAnimationFrame(animate);
+    if (isPaused || fourierCoefficients.length === 0) return;
+
+    const epiWidth = epicycleCanvas.width;
+    const epiHeight = epicycleCanvas.height;
+    
+    eCtx.clearRect(0, 0, epiWidth, epiHeight);
+    if (document.fullscreenElement === epicycleCanvas) {
+        drawGraph(eCtx, epiWidth, epiHeight);
+    }
+    
+    let x = epiWidth / 2;
+    let y = epiHeight / 2;
+    
+    const order = parseInt(orderSlider.value);
+    for (let i = 0; i < order && i < fourierCoefficients.length; i++) {
+        const { freq, amp, phase } = fourierCoefficients[i];
+        const prevX = x;
+        const prevY = y;
+        const rotation = freq * time + phase;
+        x += amp * Math.cos(rotation);
+        y += amp * Math.sin(rotation);
+        
+        eCtx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+        eCtx.lineWidth = 1;
+        eCtx.beginPath();
+        eCtx.arc(prevX, prevY, amp, 0, 2 * Math.PI);
+        eCtx.stroke();
+        
+        eCtx.strokeStyle = 'white';
+        eCtx.lineWidth = 2;
+        eCtx.beginPath();
+        eCtx.moveTo(prevX, prevY);
+        eCtx.lineTo(x, y);
+        eCtx.stroke();
+    }
+    
+    const resultX = x - (epiWidth / 2) + (resultCanvas.width / 2);
+    const resultY = y - (epiHeight / 2) + (resultCanvas.height / 2);
+
+    if (path.length > 0) {
+         rCtx.strokeStyle = '#1e88e5';
+         rCtx.lineWidth = 3;
+         rCtx.beginPath();
+         rCtx.moveTo(path[0].x, path[0].y);
+         rCtx.lineTo(resultX, resultY);
+         rCtx.stroke();
+    }
+    path.unshift({x: resultX, y: resultY});
+    
+    const dt = (2 * Math.PI) / fourierCoefficients.length;
+    time += dt;
+
+    if (time >= 2 * Math.PI) {
+        time = 2 * Math.PI;
+        isPaused = true;
+        pauseButton.textContent = 'Play';
+    }
+}
+
+animate();
+
+</script>
+</body>
+</html>
