@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Ultimate Top-Down Shooter</title>
+  <style>
+    canvas {
+      background: #111;
+      display: block;
+      margin: 0 auto;
+      border: 2px solid #444;
+    }
+    body {
+      text-align: center;
+      color: white;
+      font-family: sans-serif;
+    }
+  </style>
+</head>
+<body>
+  <h1>Ultimate Top-Down Shooter</h1>
+  <p>Move: WASD | Shoot: Click | Switch Weapon: 1=Pistol, 2=Shotgun, 3=Laser</p>
+  <canvas id="gameCanvas" width="800" height="600"></canvas>
+  <script>
+    const canvas = document.getElementById("gameCanvas");
+    const ctx = canvas.getContext("2d");
+
+    const player = {
+      x: canvas.width / 2,
+      y: canvas.height / 2,
+      size: 20,
+      speed: 4,
+      health: 100,
+      weapon: "pistol"
+    };
+
+    const bullets = [];
+    const enemies = [];
+    const powerUps = [];
+    let score = 0;
+    let wave = 1;
+    let keys = {};
+    let mouse = { x: 0, y: 0 };
+    let gameOver = false;
+
+    document.addEventListener("keydown", e => {
+      keys[e.key] = true;
+      if (["1", "2", "3"].includes(e.key)) {
+        player.weapon = e.key === "1" ? "pistol" : e.key === "2" ? "shotgun" : "laser";
+      }
+    });
+    document.addEventListener("keyup", e => keys[e.key] = false);
+    canvas.addEventListener("mousemove", e => {
+      const rect = canvas.getBoundingClientRect();
+      mouse.x = e.clientX - rect.left;
+      mouse.y = e.clientY - rect.top;
+    });
+    canvas.addEventListener("click", () => {
+      const angle = Math.atan2(mouse.y - player.y, mouse.x - player.x);
+      if (player.weapon === "pistol") {
+        bullets.push({ x: player.x, y: player.y, dx: Math.cos(angle) * 8, dy: Math.sin(angle) * 8, radius: 5 });
+      } else if (player.weapon === "shotgun") {
+        for (let i = -1; i <= 1; i++) {
+          const spread = angle + i * 0.2;
+          bullets.push({ x: player.x, y: player.y, dx: Math.cos(spread) * 6, dy: Math.sin(spread) * 6, radius: 4 });
+        }
+      } else if (player.weapon === "laser") {
+        bullets.push({ x: player.x, y: player.y, dx: Math.cos(angle) * 12, dy: Math.sin(angle) * 12, radius: 3, pierce: true });
+      }
+    });
+
+    function spawnWave() {
+      for (let i = 0; i < wave * 3; i++) {
+        const type = Math.random() < 0.4 ? "fast" : Math.random() < 0.7 ? "smart" : "slow";
+        const x = Math.random() * canvas.width;
+        const y = Math.random() < 0.5 ? 0 : canvas.height;
+        enemies.push({ x, y, size: 20, type, health: type === "slow" ? 3 : 1 });
+      }
+      wave++;
+    }
+
+    function spawnPowerUp() {
+      const types = ["health", "bomb", "shield"];
+      const type = types[Math.floor(Math.random() * types.length)];
+      powerUps.push({
+        x: Math.random() * canvas.width,
+        y: Math.random() * canvas.height,
+        size: 15,
+        type
+      });
+    }
+
+    setInterval(spawnWave, 10000);
+    setInterval(spawnPowerUp, 15000);
+
+    function update() {
+      if (gameOver) return;
+
+      // Player movement
+      if (keys["w"] && player.y > 0) player.y -= player.speed;
+      if (keys["s"] && player.y < canvas.height) player.y += player.speed;
+      if (keys["a"] && player.x > 0) player.x -= player.speed;
+      if (keys["d"] && player.x < canvas.width) player.x += player.speed;
+
+      // Bullets
+      bullets.forEach((b, i) => {
+        b.x += b.dx;
+        b.y += b.dy;
+        if (b.x < 0 || b.x > canvas.width || b.y < 0 || b.y > canvas.height) {
+          bullets.splice(i, 1);
+        }
+      });
+
+      // Enemies
+      enemies.forEach((e, ei) => {
+        let angle;
+        if (e.type === "smart") {
+          // Dodge bullets
+          const nearestBullet = bullets.find(b => Math.hypot(b.x - e.x, b.y - e.y) < 100);
+          if (nearestBullet) {
+            angle = Math.atan2(e.y - nearestBullet.y, e.x - nearestBullet.x);
+          } else {
+            angle = Math.atan2(player.y - e.y, player.x - e.x);
+          }
+        } else {
+          angle = Math.atan2(player.y - e.y, player.x - e.x);
+        }
+        const speed = e.type === "fast" ? 3 : e.type === "smart" ? 2.5 : 1.5;
+        e.x += Math.cos(angle) * speed;
+        e.y += Math.sin(angle) * speed;
+
+        // Collision with player
+        const dist = Math.hypot(player.x - e.x, player.y - e.y);
+        if (dist < player.size + e.size) {
+          player.health -= 1;
+        }
+
+        // Collision with bullets
+        bullets.forEach((b, bi) => {
+          const d = Math.hypot(b.x - e.x, b.y - e.y);
+          if (d < e.size) {
+            e.health -= 1;
+            if (!b.pierce) bullets.splice(bi, 1);
+            if (e.health <= 0) {
+              enemies.splice(ei, 1);
+              score += 10;
+            }
+          }
+        });
+      });
+
+      // Power-ups
+      powerUps.forEach((p, pi) => {
+        const dist = Math.hypot(player.x - p.x, player.y - p.y);
+        if (dist < player.size + p.size) {
+          if (p.type === "health") player.health = Math.min(100, player.health + 30);
+          if (p.type === "bomb") enemies.length = 0;
+          if (p.type === "shield") player.health += 50;
+          powerUps.splice(pi, 1);
+        }
+      });
+
+      if (player.health <= 0) gameOver = true;
+    }
+
+    function draw() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      // Player
+      ctx.fillStyle = "white";
+      ctx.beginPath();
+      ctx.arc(player.x, player.y, player.size, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Bullets
+      ctx.fillStyle = "lime";
+      bullets.forEach(b => {
+        ctx.beginPath();
+        ctx.arc(b.x, b.y, b.radius, 0, Math.PI * 2);
+        ctx.fill();
+      });
+
+      // Enemies
+      enemies.forEach(e => {
+        ctx.fillStyle = e.type === "fast" ? "orange" : e.type === "smart" ? "purple" : "red";
+        ctx.beginPath();
+        ctx.arc(e.x, e.y, e.size, 0, Math.PI * 2);
+        ctx.fill();
+      });
+
+      // Power-ups
+      powerUps.forEach(p => {
+        ctx.fillStyle = p.type === "health" ? "green" : p.type === "bomb" ? "yellow" : "cyan";
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+        ctx.fill();
+      });
+
+      // HUD
+      ctx.fillStyle = "white";
+      ctx.font = "20px Arial";
+      ctx.fillText(`Health: ${player.health}`, 20, 30);
+      ctx.fillText(`Score: ${score}`, 20, 60);
+      ctx.fillText(`Wave: ${wave}`, 20, 90);
+      ctx.fillText(`Weapon: ${player.weapon}`, 20, 120);
+
+      // Health bar
+      ctx.fillStyle = "gray";
+      ctx.fillRect(20, canvas.height - 30, 200, 20);
+      ctx.fillStyle = "lime";
+      ctx.fillRect(20, canvas.height - 30, (player.health / 100) * 200, 20);
+      ctx.strokeStyle = "white";
+      ctx.strokeRect(20, canvas.height - 30, 200, 20);
+
+       if (gameOver) {
+        ctx.fillStyle = "rgba(0,0,0,0.7)";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = "white";
+        ctx.font = "40px Arial";
+        ctx.fillText("Game Over", canvas.width / 2 - 100, canvas.height / 2);
+        ctx.font = "20px Arial";
+        ctx.fillText("Refresh to play again", canvas.width / 2 - 100, canvas.height / 2 + 40);
+      }
+    }
+function gameLoop() {
+      update();
+      draw();
+      requestAnimationFrame(gameLoop);
+    }
+
+    gameLoop();
+  </script>
+</body>
+</html>
